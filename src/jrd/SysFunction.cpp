@@ -44,6 +44,7 @@
 #include "../jrd/blb_proto.h"
 #include "../jrd/cch_proto.h"
 #include "../jrd/cvt_proto.h"
+#include "../jrd/cvt2_proto.h"
 #include "../common/cvt.h"
 #include "../jrd/evl_proto.h"
 #include "../jrd/intl_proto.h"
@@ -860,11 +861,14 @@ void setParamsMakeDbkey(DataTypeUtilBase*, const SysFunction*, int argsCount, ds
 {
 	// MAKE_DBKEY ( REL_NAME | REL_ID, RECNUM [, DPNUM [, PPNUM] ] )
 
-	if (args[0]->isUnknown())
-		args[0]->makeLong(0);
+	if (argsCount > 1)
+	{
+		if (args[0]->isUnknown())
+			args[0]->makeLong(0);
 
-	if (args[1]->isUnknown())
-		args[1]->makeInt64(0);
+		if (args[1]->isUnknown())
+			args[1]->makeInt64(0);
+	}
 
 	if (argsCount > 2 && args[2]->isUnknown())
 		args[2]->makeInt64(0);
@@ -2801,9 +2805,10 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 					ERR_post(Arg::Gds(rangeExceededStatus));
 
 				tm times;
-				timestamp.decode(&times);
+				int fractions;
+				timestamp.decode(&times, &fractions);
 				times.tm_year += quantity;
-				timestamp.encode(&times);
+				timestamp.encode(&times, fractions);
 
 				int day = times.tm_mday;
 				timestamp.decode(&times);
@@ -2819,7 +2824,8 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 					ERR_post(Arg::Gds(rangeExceededStatus));
 
 				tm times;
-				timestamp.decode(&times);
+				int fractions;
+				timestamp.decode(&times, &fractions);
 
 				int md[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
@@ -2854,7 +2860,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 				else if (times.tm_mday < 1)
 					times.tm_mday = 1;
 
-				timestamp.encode(&times);
+				timestamp.encode(&times, fractions);
 			}
 			break;
 
@@ -5381,7 +5387,7 @@ dsc* evlMakeDbkey(Jrd::thread_db* tdbb, const SysFunction* function, const NestV
 	if (argDsc->isText())
 	{
 		MetaName relName;
-		MOV_get_metaname(tdbb, argDsc, relName);
+		CVT2_make_metaname(argDsc, relName, tdbb->getAttachment()->att_dec_status);
 
 		const jrd_rel* const relation = MET_lookup_relation(tdbb, relName);
 		if (!relation)

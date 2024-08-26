@@ -106,6 +106,9 @@ RAW_DEVICES_FLG=Y
 EXPORT_SYMBOLS_STYLE=linux
 INSTALL_PREFIX=""
 
+dnl do not use additional atomic support library by default
+ATOMICLIB=
+
 dnl Use /usr/lib for library links on most platforms except some 64-bit ones
 libdir=/usr/lib
 
@@ -320,6 +323,7 @@ dnl CPU_TYPE=ppc64
     SHRLIB_EXT=so
     CPU_TYPE=arm32
     STD_EDITLINE=true
+    ATOMICLIB=atomic
     ;;
 
   aarch64*-*-linux*)
@@ -678,17 +682,17 @@ AC_ARG_WITH(system-re2,
   [RE2_BUILD=N])
 AC_SUBST(RE2_BUILD)
 
+dnl set required atomic support library
+AC_ARG_WITH(atomiclib,
+  [  --with-atomiclib        build with explicitly specified atomic support library],
+  [ATOMICLIB=${withval}])
+
 dnl This is currently used for internal and public (API headers) needs
 SYSTEM_BOOST=N
 AC_ARG_WITH(system-boost,
   [  --with-system-boost     use system-wide boost library instead of embedded copy],
   [SYSTEM_BOOST=Y])
 AC_SUBST(SYSTEM_BOOST)
-
-ATOMICLIB=atomic
-AC_ARG_WITH(atomiclib,
-  [  --with-atomiclib        build with explicitly specified atomic support library],
-  [ATOMICLIB=${withval}])
 
 dnl Avoid dumb '-g -O2' autoconf's default
 dnl Debugging information and optimization flags should be set in prefix.$platform file
@@ -1044,7 +1048,9 @@ dnl Check for libraries
 AC_SEARCH_LIBS(dlopen, dl)
 AC_CHECK_LIB(m, main)
 AC_SEARCH_LIBS(inet_aton, resolv)
-AC_CHECK_LIB($ATOMICLIB, main)
+if test "$ATOMICLIB"; then
+	AC_CHECK_LIB($ATOMICLIB, main)
+fi
 
 dnl Check for libraries for static C++ runtime linking
 AC_CHECK_LIB(supc++, main, XE_APPEND(-lsupc++, STATIC_CXXSUPPORT_LIB))
